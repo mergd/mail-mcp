@@ -85,13 +85,18 @@ oauth.post("/decision", async (c) => {
     const approved = await oauthApi.approveConsent(c.req.raw, body.handle, { scope });
     const details = await oauthApi.describeConsent(approved.request);
     const props: GrantProps = { userId, accountIds: owned, level };
-    const { redirectTo } = await oauthApi.completeAuthorization({
-      request: approved.request,
-      userId,
-      scope,
-      props,
-      metadata: { clientName: details.clientName, redirectHost: details.redirectHost, level, accountIds: owned },
-    });
+    const { redirectTo } = await oauthApi.completeAuthorization({ request: approved.request, userId, scope, props, metadata: {} });
+
+    // Codes and tokens are "<userId>:<grantId>:<secret>".
+    const grantId = new URL(redirectTo).searchParams.get("code")?.split(":")[1];
+    if (!grantId) throw new Error("Couldn't read grant id from authorization code");
+    // completeAuthorization revokes this user's earlier grants for the client; mirror that.
+    await c.env.DB.batch([
+      c.env.DB.prepare("DELETE FROM grants WHERE user_id = ? AND client_id = ?").bind(userId, approved.request.clientId),
+      c.env.DB.prepare(
+        "INSERT INTO grants (id, user_id, client_id, client_name, redirect_host, level, account_ids, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      ).bind(grantId, userId, approved.request.clientId, details.clientName, details.redirectHost, level, JSON.stringify(owned), Date.now()),
+    ]);
     return withHeaders(c.json({ redirectTo }), approved.headers);
   } catch (e) {
     return oauthError(c, e);
@@ -101,20 +106,18 @@ oauth.post("/decision", async (c) => {
 export const clients = new Hono<AppEnv>().use(requireUser);
 
 clients.get("/", async (c) => {
-  const { items } = await c.env.OAUTH_PROVIDER.listUserGrants(c.get("userId"));
-  return c.json(
-    items.map((g) => ({
-      id: g.id,
-      clientName: g.metadata?.clientName ?? g.clientId,
-      redirectHost: g.metadata?.redirectHost,
-      level: g.metadata?.level,
-      accountIds: g.metadata?.accountIds ?? [],
-      createdAt: g.createdAt * 1000,
-    })),
-  );
+  const { results } = await c.env.DB.prepare(
+    "SELECT id, client_name AS clientName, redirect_host AS redirectHost, level, account_ids AS accountIds, created_at AS createdAt FROM grants WHERE user_id = ? ORDER BY created_at DESC",
+  )
+    .bind(c.get("userId"))
+    .all<{ accountIds: string }>();
+  return c.json(results.map((r) => ({ ...r, accountIds: JSON.parse(r.accountIds) as string[] })));
 });
 
 clients.delete("/:id", async (c) => {
-  await c.env.OAUTH_PROVIDER.revokeGrant(c.req.param("id"), c.get("userId"));
+  const id = c.req.param("id");
+  const userId = c.get("userId");
+  await c.env.DB.prepare("DELETE FROM grants WHERE id = ? AND user_id = ?").bind(id, userId).run();
+  await c.env.OAUTH_PROVIDER.revokeGrant(id, userId);
   return c.json({ ok: true });
 });

@@ -185,6 +185,11 @@ function buildServer(env: Env, grant: GrantProps, scopes: string[]) {
 export const mcpHandler: ExportedHandler<Env> & { fetch: NonNullable<ExportedHandler<Env>["fetch"]> } = {
   async fetch(request, env, ctx) {
     const { props, auth } = ctx as unknown as OAuthResourceContext<GrantProps>;
+    // Revocation check against D1: KV-backed token deletion can lag behind a revoke.
+    const grantId = auth.token.split(":")[1];
+    const live = grantId && (await env.DB.prepare("SELECT 1 FROM grants WHERE id = ? AND user_id = ?").bind(grantId, props.userId).first());
+    if (!live) return new Response("Access was revoked", { status: 401, headers: { "WWW-Authenticate": 'Bearer error="invalid_token"' } });
+
     const { success } = await env.MCP_LIMIT.limit({ key: props.userId });
     if (!success) return Response.json({ error: "Rate limit exceeded. Try again in a minute." }, { status: 429 });
 
