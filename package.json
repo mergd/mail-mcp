@@ -3,17 +3,32 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "tsc --noEmit",
-    "deploy": "wrangler deploy"
+    "prepare": "panda codegen",
+    "dev": "vite",
+    "dev:worker": "wrangler dev",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p web",
+    "build": "vite build",
+    "deploy": "vite build && wrangler d1 migrations apply DB --remote && wrangler deploy"
   },
   "dependencies": {
+    "@base-ui/react": "^1.9.0",
+    "hono": "^4.13.21",
     "imapflow": "^2.12.2",
-    "postal-mime": "^4.2.1"
+    "postal-mime": "^4.2.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261123.1",
+    "@pandacss/dev": "^2.6.0",
+    "@pandacss/preset-base": "^2.6.0",
+    "@pandacss/preset-panda": "^2.6.0",
     "@types/imapflow": "^1.0.189",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
     "typescript": "^7.0.2",
+    "vite": "^8.3.8",
     "wrangler": "^4.166.0"
   }
 }

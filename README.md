@@ -10,7 +10,10 @@ Open-source bridge that connects IMAP mailboxes (Yahoo, iCloud, AOL, Fastmail, c
 
 ```sh
 bun install
-bun run typecheck
+echo "MASTER_KEY=$(openssl rand -base64 32)" > .dev.vars
+bunx wrangler d1 migrations apply DB --local
+bun run dev:worker   # API on :8787
+bun run dev          # UI on :5173, proxies /api
 ```
 
 Pushes to `main` deploy to https://mailmcp.fldr.zip via GitHub Actions.
