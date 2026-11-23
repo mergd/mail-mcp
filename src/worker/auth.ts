@@ -1,4 +1,4 @@
-import { Hono, type MiddlewareHandler } from "hono";
+import { Hono, type Context, type MiddlewareHandler } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import type { AppEnv } from "./env";
 import { randomToken, sha256 } from "./crypto";
@@ -11,7 +11,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const auth = new Hono<AppEnv>();
 
 auth.post("/request", async (c) => {
-  const { email: raw } = await c.req.json<{ email?: string }>();
+  const { email: raw, next } = await c.req.json<{ email?: string; next?: string }>();
   const email = raw?.trim().toLowerCase() ?? "";
   if (!EMAIL_RE.test(email)) return c.json({ error: "Enter a valid email address." }, 400);
 
@@ -25,7 +25,8 @@ auth.post("/request", async (c) => {
     .run();
 
   // Token goes in the fragment so it never reaches server or proxy logs.
-  const link = `${new URL(c.req.url).origin}/auth/verify#${token}`;
+  const safeNext = next?.startsWith("/") && !next.startsWith("//") ? next : "/";
+  const link = `${new URL(c.req.url).origin}/auth/verify#${new URLSearchParams({ token, next: safeNext })}`;
   await c.env.EMAIL.send({
     from: { name: "mail-mcp", email: "login@mailmcp.fldr.zip" },
     to: email,
@@ -67,14 +68,18 @@ auth.post("/logout", async (c) => {
   return c.json({ ok: true });
 });
 
-export const requireUser: MiddlewareHandler<AppEnv> = async (c, next) => {
+export async function sessionUser(c: Context<AppEnv>): Promise<string | null> {
   const sid = getCookie(c, COOKIE);
-  const row = sid
-    ? await c.env.DB.prepare("SELECT user_id FROM sessions WHERE id_hash = ? AND expires_at > ?")
-        .bind(await sha256(sid), Date.now())
-        .first<{ user_id: string }>()
-    : null;
-  if (!row) return c.json({ error: "Not signed in." }, 401);
-  c.set("userId", row.user_id);
+  if (!sid) return null;
+  const row = await c.env.DB.prepare("SELECT user_id FROM sessions WHERE id_hash = ? AND expires_at > ?")
+    .bind(await sha256(sid), Date.now())
+    .first<{ user_id: string }>();
+  return row?.user_id ?? null;
+}
+
+export const requireUser: MiddlewareHandler<AppEnv> = async (c, next) => {
+  const userId = await sessionUser(c);
+  if (!userId) return c.json({ error: "Not signed in." }, 401);
+  c.set("userId", userId);
   await next();
 };

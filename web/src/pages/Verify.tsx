@@ -9,10 +9,12 @@ export function Verify() {
   useEffect(() => {
     if (started.current) return;
     started.current = true;
-    const token = location.hash.slice(1);
+    const params = new URLSearchParams(location.hash.slice(1));
+    const next = params.get("next") ?? "/";
     history.replaceState(null, "", "/auth/verify");
-    api("/auth/verify", { body: { token } }).then(
-      () => navigate("/"),
+    api("/auth/verify", { body: { token: params.get("token") } }).then(
+      // /authorize is served by the worker, so it needs a full page load.
+      () => (next.startsWith("/authorize") ? location.assign(next) : navigate(next.startsWith("/") && !next.startsWith("//") ? next : "/")),
       (err: Error) => setError(err.message),
     );
   }, []);

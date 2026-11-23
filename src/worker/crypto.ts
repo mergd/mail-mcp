@@ -1,6 +1,7 @@
-const enc = new TextEncoder();
+import { bytesToB64 } from "./b64";
 
-const toB64 = (b: ArrayBuffer | Uint8Array) => btoa(String.fromCharCode(...new Uint8Array(b)));
+const enc = new TextEncoder();
+const toB64 = (b: ArrayBuffer | Uint8Array) => bytesToB64(new Uint8Array(b));
 const fromB64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 
 export const randomToken = () => toB64(crypto.getRandomValues(new Uint8Array(32))).replace(/[+/=]/g, (c) => ({ "+": "-", "/": "_", "=": "" })[c] ?? "");

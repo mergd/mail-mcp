@@ -3,18 +3,22 @@
   "name": "mail-mcp",
   "main": "src/worker/index.ts",
   "compatibility_date": "2026-11-01",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "routes": [{ "pattern": "mailmcp.fldr.zip", "custom_domain": true }],
   "assets": {
     "directory": "./web/dist",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*"]
+    "run_worker_first": ["/api/*", "/authorize", "/mcp", "/mcp/*", "/token", "/register", "/.well-known/*"]
   },
   "d1_databases": [
     { "binding": "DB", "database_name": "mail-mcp", "database_id": "89f587f9-307a-4784-ba63-49cc08c8a5b8" }
   ],
+  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "34bda573a28b447a87e23fe3563bedcb" }],
   "send_email": [{ "name": "EMAIL", "allowed_sender_addresses": ["login@mailmcp.fldr.zip"] }],
   "triggers": { "crons": ["0 4 * * *"] },
-  "ratelimits": [{ "name": "AUTH_LIMIT", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } }]
+  "ratelimits": [
+    { "name": "AUTH_LIMIT", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } },
+    { "name": "MCP_LIMIT", "namespace_id": "1002", "simple": { "limit": 300, "period": 60 } }
+  ]
 }

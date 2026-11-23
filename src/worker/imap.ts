@@ -1,4 +1,8 @@
-import { ImapFlow } from "imapflow";
+import { connect } from "cloudflare:sockets";
+import { createSocketsTransport, ImapFlow, type SocketsConnect } from "imapflow";
+
+const socketsConnect: SocketsConnect = (address, options) =>
+  connect(address, { secureTransport: options?.secureTransport ?? "off", allowHalfOpen: options?.allowHalfOpen ?? false });
 
 export interface ImapConfig {
   host: string;
@@ -14,6 +18,7 @@ export async function withImap<T>(cfg: ImapConfig, fn: (client: ImapFlow) => Pro
     secure: cfg.port === 993,
     auth: { user: cfg.username, pass: cfg.password },
     logger: false,
+    transport: createSocketsTransport(socketsConnect),
   });
   await client.connect();
   try {
@@ -25,7 +30,7 @@ export async function withImap<T>(cfg: ImapConfig, fn: (client: ImapFlow) => Pro
 
 export async function checkLogin(cfg: ImapConfig): Promise<string | null> {
   try {
-    await withImap(cfg, (c) => c.mailboxOpen("INBOX"));
+    await withImap(cfg, (c) => c.mailboxOpen("INBOX", { readOnly: true }));
     return null;
   } catch (e) {
     const err = e as { authenticationFailed?: boolean; message?: string };

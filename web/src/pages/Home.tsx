@@ -2,6 +2,7 @@ import { Radio } from "@base-ui/react/radio";
 import { RadioGroup } from "@base-ui/react/radio-group";
 import { useEffect, useState, type FormEvent } from "react";
 import { css } from "../../styled-system/css";
+import { levelLabels, type AccessLevel } from "../../../src/shared/access";
 import { providers, type MailAccount, type ProviderId } from "../../../src/shared/providers";
 import { api, ApiError, navigate } from "../api";
 import { Button, Card, ErrorText, Page, TextField } from "../ui";
@@ -9,8 +10,9 @@ import { Button, Card, ErrorText, Page, TextField } from "../ui";
 export function Home() {
   const [me, setMe] = useState<{ email: string } | null>(null);
   const [accounts, setAccounts] = useState<MailAccount[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
 
-  const load = () => api<MailAccount[]>("/accounts").then(setAccounts);
+  const load = () => Promise.all([api<MailAccount[]>("/accounts").then(setAccounts), api<Client[]>("/clients").then(setClients)]);
 
   useEffect(() => {
     api<{ email: string }>("/me").then(
@@ -26,6 +28,11 @@ export function Home() {
 
   async function remove(id: string) {
     await api(`/accounts/${id}`, { method: "DELETE" });
+    await load();
+  }
+
+  async function revoke(id: string) {
+    await api(`/clients/${id}`, { method: "DELETE" });
     await load();
   }
 
@@ -67,10 +74,67 @@ export function Home() {
 
       <ConnectForm onConnected={load} />
 
+      {accounts.length > 0 && <McpUrl />}
+
+      {clients.length > 0 && (
+        <Card>
+          <h2 className={css({ fontWeight: "semibold", mb: "3" })}>Connected apps</h2>
+          <ul className={css({ display: "flex", flexDir: "column", divideY: "1px", divideColor: "border" })}>
+            {clients.map((cl) => (
+              <li key={cl.id} className={css({ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "3", py: "2.5" })}>
+                <div className={css({ minW: 0 })}>
+                  <div className={css({ truncate: true })}>{cl.clientName}</div>
+                  <div className={css({ fontSize: "sm", color: "muted" })}>
+                    {cl.level ? levelLabels[cl.level].title : "Unknown access"} ·{" "}
+                    {cl.accountIds.map((id) => accounts.find((a) => a.id === id)?.email).filter(Boolean).join(", ") || "no mailboxes"}
+                  </div>
+                </div>
+                <Button variant="danger" onClick={() => revoke(cl.id)}>
+                  Revoke
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
       <a href="/privacy" className={css({ fontSize: "sm", color: "muted" })}>
         Privacy
       </a>
     </Page>
+  );
+}
+
+interface Client {
+  id: string;
+  clientName: string;
+  level?: AccessLevel;
+  accountIds: string[];
+  createdAt: number;
+}
+
+function McpUrl() {
+  const url = `${location.origin}/mcp`;
+  const [copied, setCopied] = useState(false);
+  return (
+    <Card>
+      <h2 className={css({ fontWeight: "semibold", mb: "1" })}>Connect your AI app</h2>
+      <p className={css({ fontSize: "sm", color: "muted", mb: "3" })}>
+        Add this URL as a remote MCP server (in Claude: Settings → Connectors → Add custom connector). You'll choose which mailboxes it can use and what it may do.
+      </p>
+      <div className={css({ display: "flex", gap: "2" })}>
+        <code className={css({ flex: 1, minW: 0, truncate: true, px: "3", py: "2", rounded: "md", bg: "bg", border: "1px solid", borderColor: "border", fontSize: "sm" })}>{url}</code>
+        <Button
+          onClick={async () => {
+            await navigator.clipboard.writeText(url);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+          }}
+        >
+          {copied ? "Copied" : "Copy"}
+        </Button>
+      </div>
+    </Card>
   );
 }
 

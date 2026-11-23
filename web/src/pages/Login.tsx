@@ -14,7 +14,7 @@ export function Login() {
     setPending(true);
     setError("");
     try {
-      await api("/auth/request", { body: { email } });
+      await api("/auth/request", { body: { email, next: new URLSearchParams(location.search).get("next") ?? "/" } });
       setSent(true);
     } catch (err) {
       setError((err as Error).message);
