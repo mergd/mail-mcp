@@ -7,6 +7,13 @@
     <title>mail-mcp</title>
   </head>
   <body data-theme="fldr">
+    <script>
+      // fldr/ui defaults to light; follow the system instead.
+      const dark = matchMedia("(prefers-color-scheme: dark)");
+      const setMode = () => (document.body.dataset.mode = dark.matches ? "dark" : "light");
+      setMode();
+      dark.addEventListener("change", setMode);
+    </script>
     <div id="root" style="isolation: isolate"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
