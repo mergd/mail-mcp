@@ -1,65 +1,74 @@
+import { Link, Text } from "@fldr/ui";
 import { css } from "../../styled-system/css";
 import { providers, unsupported, type Provider } from "../../../src/shared/providers";
-import { Card, Heading, Page } from "../ui";
-
-const muted = css({ fontSize: "sm", color: "muted" });
+import { Heading, Page, Section, stack } from "../ui";
 
 /** How to get an app password for one provider. */
 export function ProviderSteps({ provider }: { provider: Provider }) {
   return (
-    <div className={css({ display: "flex", flexDir: "column", gap: "3", alignItems: "flex-start" })}>
-      <ol className={css({ listStyle: "decimal", pl: "5", display: "flex", flexDir: "column", gap: "1.5" })}>
+    <div className={stack("3")}>
+      <ol className={css({ listStyle: "decimal", pl: "5", display: "flex", flexDir: "column", gap: "1" })}>
         {provider.steps.map((s) => (
-          <li key={s}>{s}</li>
+          <Text as="li" key={s}>
+            {s}
+          </Text>
         ))}
       </ol>
       {provider.appPasswordUrl && (
-        <a
-          href={provider.appPasswordUrl}
-          target="_blank"
-          rel="noreferrer"
-          className={css({ fontSize: "sm", fontWeight: "medium", color: "accent", _hover: { textDecoration: "underline" } })}
-        >
-          Open {new URL(provider.appPasswordUrl).hostname} ↗
-        </a>
+        <Link href={provider.appPasswordUrl} target="_blank" rel="noreferrer">
+          Open {new URL(provider.appPasswordUrl).hostname}
+          <Link.ExternalIcon />
+        </Link>
       )}
-      {provider.note && <p className={muted}>{provider.note}</p>}
+      {provider.note && (
+        <Text variant="secondary" size="sm">
+          {provider.note}
+        </Text>
+      )}
     </div>
   );
 }
+
+const Servers = ({ p }: { p: Provider }) => (
+  <Text variant="mono-secondary">
+    IMAP {p.imap.host}:{p.imap.port} · SMTP {p.smtp.host}:{p.smtp.port}
+  </Text>
+);
 
 export function Guide() {
   const list = Object.values(providers).filter((p) => p.id !== "custom");
   return (
     <Page>
-      <div>
-        <Heading>Setup guides</Heading>
-        <p className={muted}>
-          How to create an app password for each provider. <a href="/" className={css({ color: "accent" })}>Connect a mailbox →</a>
-        </p>
-      </div>
+      <Heading
+        description={
+          <>
+            How to create an app password for each provider. <Link href="/">Connect a mailbox</Link>
+          </>
+        }
+      >
+        Setup guides
+      </Heading>
       {list.map((p) => (
-        <Card key={p.id}>
-          <h2 className={css({ fontWeight: "semibold", mb: "3" })}>{p.name}</h2>
-          <ProviderSteps provider={p} />
-          <p className={css({ fontSize: "xs", color: "muted", mt: "3" })}>
-            IMAP {p.imap.host}:{p.imap.port} · SMTP {p.smtp.host}:{p.smtp.port}
-          </p>
-        </Card>
+        <Section key={p.id} title={p.name}>
+          <div className={stack("3")}>
+            <ProviderSteps provider={p} />
+            <Servers p={p} />
+          </div>
+        </Section>
       ))}
       {unsupported.map((u) => (
-        <Card key={u.name}>
-          <h2 className={css({ fontWeight: "semibold", mb: "2" })}>{u.name}</h2>
-          <p className={muted}>{u.note}</p>
-        </Card>
+        <Section key={u.name} title={u.name}>
+          <Text variant="secondary">{u.note}</Text>
+        </Section>
       ))}
-      <Card>
-        <h2 className={css({ fontWeight: "semibold", mb: "3" })}>Other providers</h2>
-        <ProviderSteps provider={providers.custom} />
-        <p className={css({ fontSize: "xs", color: "muted", mt: "3" })}>
-          We look up server settings from your domain's MX records and Mozilla's autoconfig database.
-        </p>
-      </Card>
+      <Section title="Other providers">
+        <div className={stack("3")}>
+          <ProviderSteps provider={providers.custom} />
+          <Text variant="secondary" size="sm">
+            We look up server settings from your domain's MX records and Mozilla's autoconfig database.
+          </Text>
+        </div>
+      </Section>
     </Page>
   );
 }

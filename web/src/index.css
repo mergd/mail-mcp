@@ -1,1 +1,3 @@
+/* fldr/ui (Tailwind) layers first, so Panda layout utilities win over component defaults. */
+@layer properties, theme, base, components, reset, tokens, recipes, utilities;
 @layer reset, base, tokens, recipes, utilities;

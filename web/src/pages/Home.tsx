@@ -1,10 +1,20 @@
+import { Button, ClipboardText, Collapsible, Input, Link, SensitiveInput, Text } from "@fldr/ui";
+import { ArrowLeftIcon } from "@phosphor-icons/react";
 import { useEffect, useState, type FormEvent } from "react";
-import { css, cx } from "../../styled-system/css";
+import { css } from "../../styled-system/css";
 import { levelLabels, type AccessLevel } from "../../../src/shared/access";
 import { providers, type Detected, type MailAccount } from "../../../src/shared/providers";
 import { api, ApiError, navigate } from "../api";
-import { Button, Card, ErrorText, Page, TextField } from "../ui";
+import { ErrorBanner, Page, Row, Rows, Section, stack } from "../ui";
 import { ProviderSteps } from "./Guide";
+
+interface Client {
+  id: string;
+  clientName: string;
+  level?: AccessLevel;
+  accountIds: string[];
+  createdAt: number;
+}
 
 export function Home() {
   const [me, setMe] = useState<{ email: string } | null>(null);
@@ -40,105 +50,85 @@ export function Home() {
     navigate("/login");
   }
 
+  const emailOf = (id: string) => accounts.find((a) => a.id === id)?.email;
+
   return (
     <Page>
       <header className={css({ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "4" })}>
-        <h1 className={css({ fontSize: "xl", fontWeight: "semibold" })}>mail-mcp</h1>
-        <div className={css({ display: "flex", alignItems: "center", gap: "3", fontSize: "sm", color: "muted", minW: 0 })}>
-          <span className={css({ truncate: true })}>{me.email}</span>
-          <Button variant="ghost" onClick={logout}>
+        <Text variant="heading" size="lg" as="h1">
+          mail-mcp
+        </Text>
+        <div className={css({ display: "flex", alignItems: "center", gap: "2", minW: 0 })}>
+          <Text variant="secondary" truncate>
+            {me.email}
+          </Text>
+          <Button variant="ghost" size="sm" onClick={logout}>
             Sign out
           </Button>
         </div>
       </header>
 
       {accounts.length > 0 && (
-        <Card>
-          <h2 className={css({ fontWeight: "semibold", mb: "3" })}>Mailboxes</h2>
-          <ul className={css({ display: "flex", flexDir: "column", divideY: "1px", divideColor: "border" })}>
+        <Section title="Mailboxes">
+          <Rows>
             {accounts.map((a) => (
-              <li key={a.id} className={css({ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "3", py: "2.5" })}>
-                <div className={css({ minW: 0 })}>
-                  <div className={css({ truncate: true })}>{a.email}</div>
-                  <div className={css({ fontSize: "sm", color: "muted" })}>{providers[a.provider].name}</div>
-                </div>
-                <Button variant="danger" onClick={() => remove(a.id)}>
-                  Remove
-                </Button>
-              </li>
+              <Row
+                key={a.id}
+                title={a.email}
+                detail={providers[a.provider].name}
+                action={
+                  <Button variant="secondary-destructive" size="sm" onClick={() => remove(a.id)}>
+                    Remove
+                  </Button>
+                }
+              />
             ))}
-          </ul>
-        </Card>
+          </Rows>
+        </Section>
       )}
 
       <ConnectForm onConnected={load} />
 
-      {accounts.length > 0 && <McpUrl />}
-
-      {clients.length > 0 && (
-        <Card>
-          <h2 className={css({ fontWeight: "semibold", mb: "3" })}>Connected apps</h2>
-          <ul className={css({ display: "flex", flexDir: "column", divideY: "1px", divideColor: "border" })}>
-            {clients.map((cl) => (
-              <li key={cl.id} className={css({ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "3", py: "2.5" })}>
-                <div className={css({ minW: 0 })}>
-                  <div className={css({ truncate: true })}>{cl.clientName}</div>
-                  <div className={css({ fontSize: "sm", color: "muted" })}>
-                    {cl.level ? levelLabels[cl.level].title : "Unknown access"} ·{" "}
-                    {cl.accountIds.map((id) => accounts.find((a) => a.id === id)?.email).filter(Boolean).join(", ") || "no mailboxes"}
-                  </div>
-                </div>
-                <Button variant="danger" onClick={() => revoke(cl.id)}>
-                  Revoke
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </Card>
+      {accounts.length > 0 && (
+        <Section title="Connect your AI app">
+          <div className={stack("3")}>
+            <Text variant="secondary">
+              Add this URL as a remote MCP server (in Claude: Settings → Connectors → Add custom connector). You'll choose which mailboxes it can use
+              and what it may do.
+            </Text>
+            <ClipboardText text={`${location.origin}/mcp`} />
+          </div>
+        </Section>
       )}
 
-      <a href="/privacy" className={css({ fontSize: "sm", color: "muted" })}>
-        Privacy
-      </a>
+      {clients.length > 0 && (
+        <Section title="Connected apps">
+          <Rows>
+            {clients.map((cl) => (
+              <Row
+                key={cl.id}
+                title={cl.clientName}
+                detail={`${cl.level ? levelLabels[cl.level].title : "Unknown access"} · ${cl.accountIds.map(emailOf).filter(Boolean).join(", ") || "no mailboxes"}`}
+                action={
+                  <Button variant="secondary-destructive" size="sm" onClick={() => revoke(cl.id)}>
+                    Revoke
+                  </Button>
+                }
+              />
+            ))}
+          </Rows>
+        </Section>
+      )}
+
+      <Link href="/privacy" variant="plain">
+        <Text variant="secondary" size="sm" as="span">
+          Privacy
+        </Text>
+      </Link>
     </Page>
   );
 }
 
-interface Client {
-  id: string;
-  clientName: string;
-  level?: AccessLevel;
-  accountIds: string[];
-  createdAt: number;
-}
-
-function McpUrl() {
-  const url = `${location.origin}/mcp`;
-  const [copied, setCopied] = useState(false);
-  return (
-    <Card>
-      <h2 className={css({ fontWeight: "semibold", mb: "1" })}>Connect your AI app</h2>
-      <p className={css({ fontSize: "sm", color: "muted", mb: "3" })}>
-        Add this URL as a remote MCP server (in Claude: Settings → Connectors → Add custom connector). You'll choose which mailboxes it can use and what it may do.
-      </p>
-      <div className={css({ display: "flex", gap: "2" })}>
-        <code className={css({ flex: 1, minW: 0, truncate: true, px: "3", py: "2", rounded: "md", bg: "bg", border: "1px solid", borderColor: "border", fontSize: "sm" })}>{url}</code>
-        <Button
-          onClick={async () => {
-            await navigator.clipboard.writeText(url);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1500);
-          }}
-        >
-          {copied ? "Copied" : "Copy"}
-        </Button>
-      </div>
-    </Card>
-  );
-}
-
-const stack = css({ display: "flex", flexDir: "column", gap: "4" });
-const muted = css({ fontSize: "sm", color: "muted" });
 const emptyForm = { username: "", password: "", imapHost: "", smtpHost: "", smtpPort: "465" };
 
 function ConnectForm({ onConnected }: { onConnected: () => void }) {
@@ -188,34 +178,34 @@ function ConnectForm({ onConnected }: { onConnected: () => void }) {
 
   if (!found) {
     return (
-      <Card>
-        <h2 className={css({ fontWeight: "semibold", mb: "1" })}>Connect a mailbox</h2>
-        <p className={cx(muted, css({ mb: "4" }))}>
-          iCloud, Gmail, Yahoo, AOL, Fastmail, Zoho, or any IMAP provider.{" "}
-          <a href="/guide" className={css({ color: "accent" })}>
-            Setup guides
-          </a>
-        </p>
-        <form onSubmit={lookup} className={stack}>
-          <TextField label="Email address" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <ErrorText>{error}</ErrorText>
-          <Button type="submit" disabled={pending}>
-            {pending ? "Looking up…" : "Continue"}
-          </Button>
+      <Section title="Connect a mailbox">
+        <form onSubmit={lookup} className={stack("4")}>
+          <Text variant="secondary">
+            iCloud, Gmail, Yahoo, AOL, Fastmail, Zoho, or any IMAP provider. <Link href="/guide">Setup guides</Link>
+          </Text>
+          <Input label="Email address" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <ErrorBanner>{error}</ErrorBanner>
+          <div>
+            <Button type="submit" variant="primary" loading={pending}>
+              Continue
+            </Button>
+          </div>
         </form>
-      </Card>
+      </Section>
     );
   }
 
+  const backButton = (
+    <Button type="button" variant="ghost" size="sm" icon={ArrowLeftIcon} onClick={back}>
+      Back
+    </Button>
+  );
+
   if (found.unsupported) {
     return (
-      <Card className={stack}>
-        <h2 className={css({ fontWeight: "semibold" })}>{found.unsupported.name}</h2>
-        <p className={muted}>{found.unsupported.note}</p>
-        <Button variant="ghost" onClick={back} className={css({ alignSelf: "flex-start", px: "0" })}>
-          ← Use a different address
-        </Button>
-      </Card>
+      <Section title={found.unsupported.name} actions={backButton}>
+        <Text variant="secondary">{found.unsupported.note}</Text>
+      </Section>
     );
   }
 
@@ -223,41 +213,40 @@ function ConnectForm({ onConnected }: { onConnected: () => void }) {
   const custom = found.provider === "custom";
   const servers = (
     <div className={css({ display: "grid", gridTemplateColumns: "3fr 1fr", gap: "3" })}>
-      <TextField label="IMAP server" required value={form.imapHost} onChange={set("imapHost")} placeholder="imap.example.com" />
-      <TextField label="Port" value="993" readOnly description="TLS" />
-      <TextField label="SMTP server" required value={form.smtpHost} onChange={set("smtpHost")} placeholder="smtp.example.com" />
-      <TextField label="Port" required inputMode="numeric" value={form.smtpPort} onChange={set("smtpPort")} description="465 or 587" />
+      <Input label="IMAP server" required value={form.imapHost} onChange={set("imapHost")} placeholder="imap.example.com" />
+      <Input label="Port" value="993" readOnly description="TLS" />
+      <Input label="SMTP server" required value={form.smtpHost} onChange={set("smtpHost")} placeholder="smtp.example.com" />
+      <Input label="Port" required inputMode="numeric" value={form.smtpPort} onChange={set("smtpPort")} description="465 or 587" />
     </div>
   );
 
   return (
-    <Card>
-      <h2 className={css({ fontWeight: "semibold", mb: "4" })}>
-        {provider.name}
-        {found.customDomain && !custom && <span className={cx(muted, css({ fontWeight: "normal", ml: "2" }))}>custom domain</span>}
-      </h2>
-      <form onSubmit={connect} className={stack}>
+    <Section title={found.customDomain && !custom ? `${provider.name} (custom domain)` : provider.name} actions={backButton}>
+      <form onSubmit={connect} className={stack("4")}>
         <ProviderSteps provider={provider} />
-        <TextField label="Username" required autoComplete="username" value={form.username} onChange={set("username")} description={found.usernameHint} />
-        <TextField label={custom ? "Password" : "App password"} type="password" required autoComplete="off" value={form.password} onChange={set("password")} />
+        <Input label="Username" required autoComplete="username" value={form.username} onChange={set("username")} description={found.usernameHint} />
+        <SensitiveInput
+          label={custom ? "Password" : "App password"}
+          required
+          autoComplete="off"
+          value={form.password}
+          onValueChange={(password) => setForm({ ...form, password })}
+        />
         {custom && !found.imap ? (
           servers
         ) : (
-          <details>
-            <summary className={cx(muted, css({ cursor: "pointer" }))}>Server settings</summary>
-            <div className={css({ mt: "3" })}>{servers}</div>
-          </details>
+          <Collapsible.Root>
+            <Collapsible.DefaultTrigger>Server settings</Collapsible.DefaultTrigger>
+            <Collapsible.DefaultPanel>{servers}</Collapsible.DefaultPanel>
+          </Collapsible.Root>
         )}
-        <ErrorText>{error}</ErrorText>
-        <div className={css({ display: "flex", gap: "2" })}>
-          <Button type="submit" disabled={pending}>
+        <ErrorBanner>{error}</ErrorBanner>
+        <div>
+          <Button type="submit" variant="primary" loading={pending}>
             {pending ? "Testing connection…" : "Connect"}
-          </Button>
-          <Button type="button" variant="ghost" onClick={back}>
-            Back
           </Button>
         </div>
       </form>
-    </Card>
+    </Section>
   );
 }

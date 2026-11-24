@@ -1,6 +1,7 @@
 import { StrictMode, useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
+import "@fldr/ui/styles/standalone";
 import { Consent } from "./pages/Consent";
 import { Guide } from "./pages/Guide";
 import { Home } from "./pages/Home";

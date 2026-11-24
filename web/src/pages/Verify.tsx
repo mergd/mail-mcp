@@ -1,6 +1,8 @@
+import { Link, Loader, Text } from "@fldr/ui";
 import { useEffect, useRef, useState } from "react";
+import { css } from "../../styled-system/css";
 import { api, navigate } from "../api";
-import { Card, ErrorText, Page } from "../ui";
+import { ErrorBanner, Page, stack } from "../ui";
 
 export function Verify() {
   const [error, setError] = useState("");
@@ -21,16 +23,17 @@ export function Verify() {
 
   return (
     <Page>
-      <Card>
-        {error ? (
-          <>
-            <ErrorText>{error}</ErrorText>
-            <a href="/login">Request a new link</a>
-          </>
-        ) : (
-          <p>Signing you in…</p>
-        )}
-      </Card>
+      {error ? (
+        <div className={stack("3")}>
+          <ErrorBanner>{error}</ErrorBanner>
+          <Link href="/login">Request a new link</Link>
+        </div>
+      ) : (
+        <div className={css({ display: "flex", alignItems: "center", justifyContent: "center", gap: "2" })}>
+          <Loader />
+          <Text variant="secondary">Signing you in…</Text>
+        </div>
+      )}
     </Page>
   );
 }

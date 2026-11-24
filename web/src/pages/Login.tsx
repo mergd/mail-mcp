@@ -1,21 +1,21 @@
-import { useState, type FormEvent } from "react";
+import { Link, Text } from "@fldr/ui";
+import { AuthCard } from "@fldr/ui/blocks";
+import { useState } from "react";
 import { css } from "../../styled-system/css";
 import { api } from "../api";
-import { Button, Card, ErrorText, Heading, Page, TextField } from "../ui";
+import { Page } from "../ui";
 
 export function Login() {
-  const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
+  const [sent, setSent] = useState("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
 
-  async function submit(e: FormEvent) {
-    e.preventDefault();
+  async function submit({ email }: { email: string }) {
     setPending(true);
     setError("");
     try {
       await api("/auth/request", { body: { email, next: new URLSearchParams(location.search).get("next") ?? "/" } });
-      setSent(true);
+      setSent(email);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -25,26 +25,26 @@ export function Login() {
 
   return (
     <Page>
-      <Heading>mail-mcp</Heading>
-      <p className={css({ color: "muted" })}>Connect Yahoo, iCloud, AOL, Fastmail or any IMAP mailbox to your AI assistant over MCP.</p>
-      <Card>
-        {sent ? (
-          <p>
-            Check <strong>{email}</strong> for a sign-in link. It expires in 15 minutes.
-          </p>
-        ) : (
-          <form onSubmit={submit} className={css({ display: "flex", flexDir: "column", gap: "4" })}>
-            <TextField label="Email" type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} />
-            <ErrorText>{error}</ErrorText>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Sending…" : "Email me a sign-in link"}
-            </Button>
-          </form>
-        )}
-      </Card>
-      <a href="/privacy" className={css({ fontSize: "sm", color: "muted" })}>
-        Privacy
-      </a>
+      {sent ? (
+        <div className={css({ maxW: "360px", mx: "auto", textAlign: "center" })}>
+          <Text variant="heading" size="lg" as="h1">
+            Check your email
+          </Text>
+          <Text variant="secondary">
+            We sent a sign-in link to <Text as="strong" bold>{sent}</Text>. It expires in 15 minutes.
+          </Text>
+        </div>
+      ) : (
+        <AuthCard
+          method="magic-link"
+          title="Sign in to mail-mcp"
+          description="Connect Yahoo, iCloud, AOL, Fastmail or any IMAP mailbox to your AI assistant over MCP."
+          error={error}
+          loading={pending}
+          onSubmit={submit}
+          footer={<Link href="/privacy">Privacy</Link>}
+        />
+      )}
     </Page>
   );
 }
