@@ -7,13 +7,6 @@
     <title>mail-mcp</title>
   </head>
   <body>
-    <script>
-      // fldr/ui defaults to light; follow the system. Set on <html> so Panda tokens on :root resolve too.
-      const dark = matchMedia("(prefers-color-scheme: dark)");
-      const setMode = () => (document.documentElement.dataset.mode = dark.matches ? "dark" : "light");
-      setMode();
-      dark.addEventListener("change", setMode);
-    </script>
     <div id="root" style="isolation: isolate"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
