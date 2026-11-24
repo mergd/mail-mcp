@@ -1,16 +1,16 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="fldr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" href="/icon.svg" />
     <title>mail-mcp</title>
   </head>
-  <body data-theme="fldr">
+  <body>
     <script>
-      // fldr/ui defaults to light; follow the system instead.
+      // fldr/ui defaults to light; follow the system. Set on <html> so Panda tokens on :root resolve too.
       const dark = matchMedia("(prefers-color-scheme: dark)");
-      const setMode = () => (document.body.dataset.mode = dark.matches ? "dark" : "light");
+      const setMode = () => (document.documentElement.dataset.mode = dark.matches ? "dark" : "light");
       setMode();
       dark.addEventListener("change", setMode);
     </script>
