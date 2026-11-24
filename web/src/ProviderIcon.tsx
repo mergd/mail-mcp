@@ -44,7 +44,7 @@ export function ProviderIcon({ id, size = 32 }: { id: IconId; size?: number }) {
   const mono = monograms[id];
   if (mono)
     return (
-      <span aria-hidden className={tile} style={{ ...box, background: mono.bg, color: "#fff", fontSize: size * (mono.text.length > 2 ? 0.32 : 0.42) }}>
+      <span aria-hidden className={tile} style={{ ...box, background: mono.bg, color: "#fff", boxShadow: "inset 0 0 0 1px rgb(255 255 255 / 0.16)", fontSize: size * (mono.text.length > 2 ? 0.32 : 0.42) }}>
         {mono.text}
       </span>
     );
