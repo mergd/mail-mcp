@@ -2,6 +2,7 @@ import { StrictMode, useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import { Consent } from "./pages/Consent";
+import { Guide } from "./pages/Guide";
 import { Home } from "./pages/Home";
 import { Login } from "./pages/Login";
 import { Privacy } from "./pages/Privacy";
@@ -17,6 +18,7 @@ function App() {
   if (path === "/login") return <Login />;
   if (path === "/auth/verify") return <Verify />;
   if (path === "/privacy") return <Privacy />;
+  if (path === "/guide") return <Guide />;
   if (path === "/authorize") return <Consent />;
   return <Home />;
 }

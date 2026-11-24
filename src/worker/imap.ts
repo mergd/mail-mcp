@@ -28,13 +28,13 @@ export async function withImap<T>(cfg: ImapConfig, fn: (client: ImapFlow) => Pro
   }
 }
 
-export async function checkLogin(cfg: ImapConfig): Promise<string | null> {
+export async function checkLogin(cfg: ImapConfig): Promise<{ error: string; authFailed: boolean } | null> {
   try {
     await withImap(cfg, (c) => c.mailboxOpen("INBOX", { readOnly: true }));
     return null;
   } catch (e) {
     const err = e as { authenticationFailed?: boolean; message?: string };
-    if (err.authenticationFailed) return "Login failed. Check the email address and app password.";
-    return `Couldn't connect to ${cfg.host}:${cfg.port}: ${err.message ?? "unknown error"}`;
+    if (err.authenticationFailed) return { error: "Login failed. Check the username and password.", authFailed: true };
+    return { error: `Couldn't connect to ${cfg.host}:${cfg.port}: ${err.message ?? "unknown error"}`, authFailed: false };
   }
 }

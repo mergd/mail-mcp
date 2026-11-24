@@ -1,11 +1,10 @@
-import { Radio } from "@base-ui/react/radio";
-import { RadioGroup } from "@base-ui/react/radio-group";
 import { useEffect, useState, type FormEvent } from "react";
-import { css } from "../../styled-system/css";
+import { css, cx } from "../../styled-system/css";
 import { levelLabels, type AccessLevel } from "../../../src/shared/access";
-import { providers, type MailAccount, type ProviderId } from "../../../src/shared/providers";
+import { providers, type Detected, type MailAccount } from "../../../src/shared/providers";
 import { api, ApiError, navigate } from "../api";
 import { Button, Card, ErrorText, Page, TextField } from "../ui";
+import { ProviderSteps } from "./Guide";
 
 export function Home() {
   const [me, setMe] = useState<{ email: string } | null>(null);
@@ -138,34 +137,23 @@ function McpUrl() {
   );
 }
 
-const radioCard = css({
-  px: "3",
-  py: "2",
-  rounded: "md",
-  border: "1px solid",
-  borderColor: "border",
-  fontSize: "sm",
-  cursor: "pointer",
-  textAlign: "left",
-  _checked: { borderColor: "accent", outline: "1px solid", outlineColor: "accent" },
-});
+const stack = css({ display: "flex", flexDir: "column", gap: "4" });
+const muted = css({ fontSize: "sm", color: "muted" });
+const emptyForm = { username: "", password: "", imapHost: "", smtpHost: "", smtpPort: "465" };
 
 function ConnectForm({ onConnected }: { onConnected: () => void }) {
-  const [provider, setProvider] = useState<ProviderId>("yahoo");
-  const [form, setForm] = useState({ email: "", password: "", imapHost: "", imapPort: "993", smtpHost: "", smtpPort: "465" });
+  const [email, setEmail] = useState("");
+  const [found, setFound] = useState<Detected | null>(null);
+  const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
-  const preset = providers[provider];
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm({ ...form, [k]: e.target.value });
 
-  async function submit(e: FormEvent) {
-    e.preventDefault();
+  async function run(fn: () => Promise<void>) {
     setPending(true);
     setError("");
     try {
-      await api("/accounts", { body: { provider, ...form, imapPort: Number(form.imapPort), smtpPort: Number(form.smtpPort) } });
-      setForm({ ...form, email: "", password: "" });
-      onConnected();
+      await fn();
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -173,59 +161,102 @@ function ConnectForm({ onConnected }: { onConnected: () => void }) {
     }
   }
 
+  const lookup = (e: FormEvent) => {
+    e.preventDefault();
+    return run(async () => {
+      const d = await api<Detected>("/accounts/detect", { body: { email: email.trim() } });
+      setForm({ ...emptyForm, username: email.trim(), imapHost: d.imap?.host ?? "", smtpHost: d.smtp?.host ?? "", smtpPort: String(d.smtp?.port ?? 465) });
+      setFound(d);
+    });
+  };
+
+  const connect = (e: FormEvent) => {
+    e.preventDefault();
+    return run(async () => {
+      await api("/accounts", { body: { provider: found!.provider, email: email.trim(), ...form, smtpPort: Number(form.smtpPort) } });
+      setFound(null);
+      setEmail("");
+      setForm(emptyForm);
+      onConnected();
+    });
+  };
+
+  const back = () => {
+    setFound(null);
+    setError("");
+  };
+
+  if (!found) {
+    return (
+      <Card>
+        <h2 className={css({ fontWeight: "semibold", mb: "1" })}>Connect a mailbox</h2>
+        <p className={cx(muted, css({ mb: "4" }))}>
+          iCloud, Gmail, Yahoo, AOL, Fastmail, Zoho, or any IMAP provider.{" "}
+          <a href="/guide" className={css({ color: "accent" })}>
+            Setup guides
+          </a>
+        </p>
+        <form onSubmit={lookup} className={stack}>
+          <TextField label="Email address" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <ErrorText>{error}</ErrorText>
+          <Button type="submit" disabled={pending}>
+            {pending ? "Looking up…" : "Continue"}
+          </Button>
+        </form>
+      </Card>
+    );
+  }
+
+  if (found.unsupported) {
+    return (
+      <Card className={stack}>
+        <h2 className={css({ fontWeight: "semibold" })}>{found.unsupported.name}</h2>
+        <p className={muted}>{found.unsupported.note}</p>
+        <Button variant="ghost" onClick={back} className={css({ alignSelf: "flex-start", px: "0" })}>
+          ← Use a different address
+        </Button>
+      </Card>
+    );
+  }
+
+  const provider = providers[found.provider];
+  const custom = found.provider === "custom";
+  const servers = (
+    <div className={css({ display: "grid", gridTemplateColumns: "3fr 1fr", gap: "3" })}>
+      <TextField label="IMAP server" required value={form.imapHost} onChange={set("imapHost")} placeholder="imap.example.com" />
+      <TextField label="Port" value="993" readOnly description="TLS" />
+      <TextField label="SMTP server" required value={form.smtpHost} onChange={set("smtpHost")} placeholder="smtp.example.com" />
+      <TextField label="Port" required inputMode="numeric" value={form.smtpPort} onChange={set("smtpPort")} description="465 or 587" />
+    </div>
+  );
+
   return (
     <Card>
-      <h2 className={css({ fontWeight: "semibold", mb: "4" })}>Connect a mailbox</h2>
-      <form onSubmit={submit} className={css({ display: "flex", flexDir: "column", gap: "4" })}>
-        <RadioGroup
-          value={provider}
-          onValueChange={(v) => setProvider(v as ProviderId)}
-          aria-label="Provider"
-          className={css({ display: "grid", gridTemplateColumns: { base: "1fr 1fr", sm: "repeat(3, 1fr)" }, gap: "2" })}
-        >
-          {Object.values(providers).map((p) => (
-            <Radio.Root key={p.id} value={p.id} className={radioCard}>
-              {p.name}
-            </Radio.Root>
-          ))}
-        </RadioGroup>
-
-        <TextField label="Email address" type="email" required value={form.email} onChange={set("email")} />
-        <TextField
-          label="App password"
-          type="password"
-          required
-          autoComplete="off"
-          value={form.password}
-          onChange={set("password")}
-          description={
-            preset.appPasswordUrl ? (
-              <>
-                Not your normal password. Create one at{" "}
-                <a href={preset.appPasswordUrl} target="_blank" rel="noreferrer" className={css({ color: "accent" })}>
-                  {new URL(preset.appPasswordUrl).hostname}
-                </a>
-                : {preset.appPasswordHelp}
-              </>
-            ) : (
-              "Use an app password if your provider supports them."
-            )
-          }
-        />
-
-        {provider === "custom" && (
-          <div className={css({ display: "grid", gridTemplateColumns: "3fr 1fr", gap: "3" })}>
-            <TextField label="IMAP server" required value={form.imapHost} onChange={set("imapHost")} placeholder="imap.example.com" />
-            <TextField label="Port" required inputMode="numeric" value={form.imapPort} onChange={set("imapPort")} />
-            <TextField label="SMTP server" required value={form.smtpHost} onChange={set("smtpHost")} placeholder="smtp.example.com" />
-            <TextField label="Port" required inputMode="numeric" value={form.smtpPort} onChange={set("smtpPort")} />
-          </div>
+      <h2 className={css({ fontWeight: "semibold", mb: "4" })}>
+        {provider.name}
+        {found.customDomain && !custom && <span className={cx(muted, css({ fontWeight: "normal", ml: "2" }))}>custom domain</span>}
+      </h2>
+      <form onSubmit={connect} className={stack}>
+        <ProviderSteps provider={provider} />
+        <TextField label="Username" required autoComplete="username" value={form.username} onChange={set("username")} description={found.usernameHint} />
+        <TextField label={custom ? "Password" : "App password"} type="password" required autoComplete="off" value={form.password} onChange={set("password")} />
+        {custom && !found.imap ? (
+          servers
+        ) : (
+          <details>
+            <summary className={cx(muted, css({ cursor: "pointer" }))}>Server settings</summary>
+            <div className={css({ mt: "3" })}>{servers}</div>
+          </details>
         )}
-
         <ErrorText>{error}</ErrorText>
-        <Button type="submit" disabled={pending}>
-          {pending ? "Testing connection…" : "Connect"}
-        </Button>
+        <div className={css({ display: "flex", gap: "2" })}>
+          <Button type="submit" disabled={pending}>
+            {pending ? "Testing connection…" : "Connect"}
+          </Button>
+          <Button type="button" variant="ghost" onClick={back}>
+            Back
+          </Button>
+        </div>
       </form>
     </Card>
   );

@@ -41,6 +41,7 @@ export default {
     await env.DB.batch([
       env.DB.prepare("DELETE FROM login_tokens WHERE expires_at < ?").bind(now),
       env.DB.prepare("DELETE FROM sessions WHERE expires_at < ?").bind(now),
+      env.DB.prepare("DELETE FROM connect_failures WHERE window_start < ?").bind(now - 60 * 60 * 1000),
     ]);
     await provider.purgeExpiredData(env);
   },
