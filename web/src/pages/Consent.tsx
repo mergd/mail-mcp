@@ -1,11 +1,13 @@
 import { Banner, Button, Checkbox, Link, Loader, Radio, Text } from "@fldr/ui";
-import { WarningIcon } from "@phosphor-icons/react";
+import { AppWindowIcon, EyeIcon, FolderOpenIcon, PaperPlaneTiltIcon, WarningIcon, type Icon } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { css } from "../../styled-system/css";
 import { levelLabels, type AccessLevel } from "../../../src/shared/access";
 import { providers, type ProviderId } from "../../../src/shared/providers";
 import { api } from "../api";
-import { ErrorBanner, Heading, Page, stack } from "../ui";
+import { ErrorBanner, Heading, IconTile, Page, stack } from "../ui";
+
+const levelIcons: Record<AccessLevel, Icon> = { read: EyeIcon, organize: FolderOpenIcon, full: PaperPlaneTiltIcon };
 
 interface ConsentInfo {
   handle: string;
@@ -64,6 +66,7 @@ export function Consent() {
   return (
     <Page>
       <Heading
+        icon={<IconTile icon={AppWindowIcon} size={40} />}
         description={
           <>
             {info.clientDomain ? (
@@ -102,7 +105,7 @@ export function Consent() {
 
           <Radio.Group legend="Access level" appearance="card" value={level} onValueChange={(v) => setLevel(v as AccessLevel)}>
             {(Object.keys(levelLabels) as AccessLevel[]).map((l) => (
-              <Radio.Item key={l} value={l} label={levelLabels[l].title} description={levelLabels[l].detail} />
+              <Radio.Item key={l} value={l} label={<LevelLabel level={l} />} description={levelLabels[l].detail} />
             ))}
           </Radio.Group>
         </div>
@@ -118,5 +121,15 @@ export function Consent() {
         </Button>
       </div>
     </Page>
+  );
+}
+
+function LevelLabel({ level }: { level: AccessLevel }) {
+  const I = levelIcons[level];
+  return (
+    <span className={css({ display: "inline-flex", alignItems: "center", gap: "1.5" })}>
+      <I size={16} />
+      {levelLabels[level].title}
+    </span>
   );
 }

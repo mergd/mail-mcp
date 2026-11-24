@@ -1,11 +1,12 @@
 import { Button, ClipboardText, Collapsible, Input, Link, SensitiveInput, Text } from "@fldr/ui";
-import { ArrowLeftIcon } from "@phosphor-icons/react";
-import { useEffect, useState, type FormEvent } from "react";
+import { AppWindowIcon, ArrowLeftIcon, BookOpenIcon, EnvelopeSimpleIcon, PlugsConnectedIcon, PlusCircleIcon, ProhibitIcon, ShieldCheckIcon, SignOutIcon, TrashIcon, TrayIcon } from "@phosphor-icons/react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { css } from "../../styled-system/css";
 import { levelLabels, type AccessLevel } from "../../../src/shared/access";
 import { providers, type Detected, type MailAccount } from "../../../src/shared/providers";
 import { api, ApiError, navigate } from "../api";
-import { ErrorBanner, Page, Row, Rows, Section, stack } from "../ui";
+import { ProviderIcon, providerIconId } from "../ProviderIcon";
+import { ErrorBanner, IconTile, Page, Row, Rows, Section, stack } from "../ui";
 import { ProviderSteps } from "./Guide";
 
 interface Client {
@@ -55,29 +56,33 @@ export function Home() {
   return (
     <Page>
       <header className={css({ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "4" })}>
-        <Text variant="heading" size="lg" as="h1">
-          mail-mcp
-        </Text>
+        <div className={css({ display: "flex", alignItems: "center", gap: "2.5" })}>
+          <IconTile icon={EnvelopeSimpleIcon} />
+          <Text variant="heading" size="lg" as="h1">
+            mail-mcp
+          </Text>
+        </div>
         <div className={css({ display: "flex", alignItems: "center", gap: "2", minW: 0 })}>
           <Text variant="secondary" truncate>
             {me.email}
           </Text>
-          <Button variant="ghost" size="sm" onClick={logout}>
+          <Button variant="ghost" size="sm" icon={SignOutIcon} onClick={logout}>
             Sign out
           </Button>
         </div>
       </header>
 
       {accounts.length > 0 && (
-        <Section title="Mailboxes">
+        <Section title="Mailboxes" icon={<TrayIcon size={16} />}>
           <Rows>
             {accounts.map((a) => (
               <Row
                 key={a.id}
+                icon={<ProviderIcon id={a.provider} />}
                 title={a.email}
                 detail={providers[a.provider].name}
                 action={
-                  <Button variant="secondary-destructive" size="sm" onClick={() => remove(a.id)}>
+                  <Button variant="secondary-destructive" size="sm" icon={TrashIcon} onClick={() => remove(a.id)}>
                     Remove
                   </Button>
                 }
@@ -90,7 +95,7 @@ export function Home() {
       <ConnectForm onConnected={load} />
 
       {accounts.length > 0 && (
-        <Section title="Connect your AI app">
+        <Section title="Connect your AI app" icon={<PlugsConnectedIcon size={16} />}>
           <div className={stack("3")}>
             <Text variant="secondary">
               Add this URL as a remote MCP server (in Claude: Settings → Connectors → Add custom connector). You'll choose which mailboxes it can use
@@ -102,15 +107,16 @@ export function Home() {
       )}
 
       {clients.length > 0 && (
-        <Section title="Connected apps">
+        <Section title="Connected apps" icon={<AppWindowIcon size={16} />}>
           <Rows>
             {clients.map((cl) => (
               <Row
                 key={cl.id}
+                icon={<IconTile icon={AppWindowIcon} />}
                 title={cl.clientName}
                 detail={`${cl.level ? levelLabels[cl.level].title : "Unknown access"} · ${cl.accountIds.map(emailOf).filter(Boolean).join(", ") || "no mailboxes"}`}
                 action={
-                  <Button variant="secondary-destructive" size="sm" onClick={() => revoke(cl.id)}>
+                  <Button variant="secondary-destructive" size="sm" icon={ProhibitIcon} onClick={() => revoke(cl.id)}>
                     Revoke
                   </Button>
                 }
@@ -120,14 +126,26 @@ export function Home() {
         </Section>
       )}
 
-      <Link href="/privacy" variant="plain">
-        <Text variant="secondary" size="sm" as="span">
+      <footer className={css({ display: "flex", gap: "4" })}>
+        <FooterLink href="/guide" icon={<BookOpenIcon />}>
+          Setup guides
+        </FooterLink>
+        <FooterLink href="/privacy" icon={<ShieldCheckIcon />}>
           Privacy
-        </Text>
-      </Link>
+        </FooterLink>
+      </footer>
     </Page>
   );
 }
+
+const FooterLink = ({ href, icon, children }: { href: string; icon: ReactNode; children: string }) => (
+  <Link href={href} variant="plain" className={css({ display: "inline-flex", alignItems: "center", gap: "1.5", color: "kumo.text.subtle", fontSize: "sm" })}>
+    {icon}
+    {children}
+  </Link>
+);
+
+const supported = ["icloud", "gmail", "yahoo", "aol", "fastmail", "zoho"] as const;
 
 const emptyForm = { username: "", password: "", imapHost: "", smtpHost: "", smtpPort: "465" };
 
@@ -178,11 +196,20 @@ function ConnectForm({ onConnected }: { onConnected: () => void }) {
 
   if (!found) {
     return (
-      <Section title="Connect a mailbox">
+      <Section title="Connect a mailbox" icon={<PlusCircleIcon size={16} />}>
         <form onSubmit={lookup} className={stack("4")}>
-          <Text variant="secondary">
-            iCloud, Gmail, Yahoo, AOL, Fastmail, Zoho, or any IMAP provider. <Link href="/guide">Setup guides</Link>
-          </Text>
+          <div className={stack("2")}>
+            <div className={css({ display: "flex", gap: "1.5" })}>
+              {supported.map((id) => (
+                <span key={id} title={providers[id].name}>
+                  <ProviderIcon id={id} size={28} />
+                </span>
+              ))}
+            </div>
+            <Text variant="secondary">
+              iCloud, Gmail, Yahoo, AOL, Fastmail, Zoho, or any IMAP provider. <Link href="/guide">Setup guides</Link>
+            </Text>
+          </div>
           <Input label="Email address" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           <ErrorBanner>{error}</ErrorBanner>
           <div>
@@ -203,7 +230,7 @@ function ConnectForm({ onConnected }: { onConnected: () => void }) {
 
   if (found.unsupported) {
     return (
-      <Section title={found.unsupported.name} actions={backButton}>
+      <Section title={found.unsupported.name} icon={<ProviderIcon id={providerIconId(found.unsupported.name)} size={20} />} actions={backButton}>
         <Text variant="secondary">{found.unsupported.note}</Text>
       </Section>
     );
@@ -221,7 +248,11 @@ function ConnectForm({ onConnected }: { onConnected: () => void }) {
   );
 
   return (
-    <Section title={found.customDomain && !custom ? `${provider.name} (custom domain)` : provider.name} actions={backButton}>
+    <Section
+      title={found.customDomain && !custom ? `${provider.name} (custom domain)` : provider.name}
+      icon={<ProviderIcon id={found.provider} size={20} />}
+      actions={backButton}
+    >
       <form onSubmit={connect} className={stack("4")}>
         <ProviderSteps provider={provider} />
         <Input label="Username" required autoComplete="username" value={form.username} onChange={set("username")} description={found.usernameHint} />

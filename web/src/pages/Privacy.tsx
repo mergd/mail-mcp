@@ -1,12 +1,16 @@
 import { Link, Text } from "@fldr/ui";
+import { CloudIcon, DatabaseIcon, EyeSlashIcon, TrashIcon, UsersIcon, type Icon } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
 import { css } from "../../styled-system/css";
 import { Heading, Page, stack } from "../ui";
 
-const Part = ({ title, children }: { title: string; children: ReactNode }) => (
+const Part = ({ title, icon: I, children }: { title: string; icon: Icon; children: ReactNode }) => (
   <section className={stack("1")}>
     <Text variant="heading" as="h2">
-      {title}
+      <span className={css({ display: "inline-flex", alignItems: "center", gap: "2" })}>
+        <I size={18} />
+        {title}
+      </span>
     </Text>
     {children}
   </section>
@@ -19,7 +23,7 @@ export function Privacy() {
         Privacy
       </Heading>
       <div className={stack("6")}>
-        <Part title="What we store">
+        <Part title="What we store" icon={DatabaseIcon}>
           <ul className={css({ listStyle: "disc", pl: "5", display: "flex", flexDir: "column", gap: "1" })}>
             <Text as="li">Your sign-in email address.</Text>
             <Text as="li">
@@ -29,19 +33,19 @@ export function Privacy() {
             <Text as="li">Which assistants you've authorized and what access level you gave them.</Text>
           </ul>
         </Part>
-        <Part title="What we don't store">
+        <Part title="What we don't store" icon={EyeSlashIcon}>
           <Text>
             We don't store or log your emails. Messages are fetched from your mail provider when your assistant asks for them and passed straight
             through. We don't use your mail for anything else, and we don't sell or share data.
           </Text>
         </Part>
-        <Part title="Who sees your mail">
+        <Part title="Who sees your mail" icon={UsersIcon}>
           <Text>Your mail provider, and the AI assistant you authorize. What that assistant does with your mail is covered by its own privacy policy.</Text>
         </Part>
-        <Part title="Infrastructure">
+        <Part title="Infrastructure" icon={CloudIcon}>
           <Text>mail-mcp runs on Cloudflare Workers, with data in Cloudflare D1. Sign-in emails are sent with Cloudflare Email.</Text>
         </Part>
-        <Part title="Removing your data">
+        <Part title="Removing your data" icon={TrashIcon}>
           <Text>
             Removing a mailbox deletes its stored credentials immediately. You can also revoke the app password with your provider at any time,
             which cuts off access straight away.
