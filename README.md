@@ -38,3 +38,7 @@ Pushes to `main` deploy via GitHub Actions: build the UI, apply D1 migrations, t
 ## Self-hosting
 
 Create a D1 database and a KV namespace, put their IDs in `wrangler.jsonc`, enable Email Sending on your domain, change the domain in `wrangler.jsonc` and `src/worker/index.ts`, and set the secret with `wrangler secret put MASTER_KEY`.
+
+## License
+
+MIT
